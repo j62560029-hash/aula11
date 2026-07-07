@@ -69,15 +69,15 @@ if user_input := st.chat_input("Digite sua mensagem aqui..."):
             message_placeholder = st.empty()
             message_placeholder.markdown("*Analisando sintomas...*")
             
-            # Endpoint oficial do OpenRouter
+            # Endpoint corrigido oficial
             url = "https://openrouter.ai/api/v1/chat/completions"
             
             # Headers obrigatórios do OpenRouter
             headers = {
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {api_key.strip()}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:8501", # Necessário para o OpenRouter saber a origem
-                "X-Title": "Agente Hospitalar Streamlit"
+                "HTTP-Referer": "https://localhost:8501", 
+                "X-Title": "Agente Hospitalar"
             }
             
             # Montagem do Payload
@@ -93,18 +93,19 @@ if user_input := st.chat_input("Digite sua mensagem aqui..."):
             
             try:
                 response = requests.post(url, headers=headers, json=payload)
-                response.raise_for_status()
                 
-                response_data = response.json()
-                
-                # Extrai a resposta do modelo
-                if "choices" in response_data and len(response_data["choices"]) > 0:
-                    bot_reply = response_data["choices"][0]["message"]["content"]
-                    message_placeholder.markdown(bot_reply)
-                    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                if response.status_code == 401:
+                    message_placeholder.markdown("❌ **Erro:** Sua API Key do OpenRouter parece inválida ou expirou.")
                 else:
-                    message_placeholder.markdown("⚠️ Resposta inesperada da API. Verifique os logs.")
+                    response.raise_for_status()
+                    response_data = response.json()
+                    
+                    if "choices" in response_data and len(response_data["choices"]) > 0:
+                        bot_reply = response_data["choices"][0]["message"]["content"]
+                        message_placeholder.markdown(bot_reply)
+                        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                    else:
+                        message_placeholder.markdown("⚠️ Resposta inesperada da API. Verifique sua conta.")
                     
             except Exception as e:
-                # Exibe detalhes do erro caso a chave seja inválida ou o modelo falhe
                 message_placeholder.markdown(f"❌ **Erro no OpenRouter:** {str(e)}")
